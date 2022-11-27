@@ -1,3 +1,5 @@
+#define TAM_LINEA 16
+
 typedef struct {
 unsigned char ETQ;
 unsigned char Data[TAM_LINEA];
