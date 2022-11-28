@@ -1,3 +1,5 @@
+//Antonio Cabrera y Alejandro Gómez
+
 #define TAM_LINEA 16
 
 typedef struct {
