@@ -16,6 +16,7 @@ int main(int argc, char** argv){
     int globaltime = 0;
     int numfallos = 0;
     unsigned char Simul_RAM[TAM_RAM];
+    unsigned int accesos_memoria[TAM_LINEA];
     FILE *fd;
 
     T_CACHE_LINE linea_cache;       //Reset total de la caché
@@ -29,7 +30,24 @@ int main(int argc, char** argv){
         printf("[Error al cargar la RAM]\n");
         return -1;
     }else{
-        return 0;
+        int i=0;
+        char c = fgetc(fd);         //Leemos el contenido de la ram y lo volcamos en Simul_RAM
+        while(c != EOF){   
+            Simul_RAM[i++] = c;
+            c = fgetc(fd);
+        }
+        fclose(fd);
+
+        fd = fopen("accesos_memoria.txt", "r");
+        if(fd == NULL){
+            printf("[Error al leer el acceso a memoria]\n");
+            return -1;
+        }else{
+            int direccion;
+            
+
+            return 0;
+        }
     }
 }
 
