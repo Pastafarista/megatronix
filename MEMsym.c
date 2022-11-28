@@ -24,7 +24,7 @@ int main(int argc, char** argv){
         linea_cache.Data[i] = 35;   // x23 -> 35
     }
 
-    fd = fopen("CONTENTS_RAM", "r");
+    fd = fopen("CONTENTS_RAM.bin", "r");
     if(fd == NULL){
         printf("[Error al cargar la RAM]\n");
         return -1;
