@@ -15,9 +15,17 @@ typedef struct {
     unsigned char Data[TAM_LINEA];
 } T_CACHE_LINE;
 
+typedef struct{
+    unsigned int addr;
+    unsigned int palabra;
+    unsigned int bloque;
+    unsigned int linea;
+    unsigned int etiqueta;
+}MAPA_ADDR;
+
 void LimpiarCACHE(T_CACHE_LINE tbl[NUM_FILAS]);
 void VolcarCACHE(T_CACHE_LINE *tbl);
-void ParsearDireccion(unsigned int addr, int *ETQ, int *palabra, int *linea, int *bloque);
+void ParsearDireccion(unsigned int addr, MAPA_ADDR *datos);
 void TratarFallo(T_CACHE_LINE *tbl, char *MRAM, int ETQ, int linea, int bloque);
 
 int hexToDec(char hex[3]);                    //Transforma un número de hexadecimal a decimal
@@ -45,29 +53,28 @@ int main(int argc, char** argv){
         printf("[Error al cargar la RAM]\n");
         return -1;
     }
+
+    //Bucle que vuelca el fichero CONTENTS_RAM.bin
     int i = 0;
-    char c = fgetc(fd); //Bucle que vuelca el fichero
+    char c = fgetc(fd); 
     while(c != EOF){   
         Simul_RAM[i++] = c;
         c = fgetc(fd);
     }
     fclose(fd);
 
+    //Abrir el archivo accesos_memoria.txt
     fd = fopen("accesos_memoria.txt", "r"); 
     if(fd == NULL){
         printf("[Error al leer el acceso a memoria]\n");
         return -1;
     }
 
-    int *ETQ, *palabra, *linea, *bloque;
-    ETQ = malloc(sizeof(int)*2);
-    palabra = malloc(sizeof(int)*2);
-    linea = malloc(sizeof(int)*2);
-    bloque= malloc(sizeof(int)*2);
+    
+    MAPA_ADDR datos;
 
-
-    ParsearDireccion(nextAddr(fd), ETQ, palabra, linea, bloque);
-    printf("Etiqueta:%i\nPalabra:%i\nLinea:%i\nBloque:%i", *ETQ, *palabra, *linea, *bloque);
+    ParsearDireccion(nextAddr(fd), &datos);
+    printf("Etiqueta:%i\nPalabra:%i\nLinea:%i\nBloque:%i", datos.etiqueta, datos.palabra, datos.linea, datos.bloque);
 
     return 0;
 }
@@ -133,9 +140,10 @@ unsigned int getPalabra(unsigned int addr){
     return ret;
 }
 
-void ParsearDireccion(unsigned int addr, int *ETQ, int *palabra, int *linea, int *bloque){
-    *ETQ = getEtq(addr);
-    *palabra = getPalabra(addr);
-    *linea = getLinea(addr);
-    *bloque = getBloque(addr);
+void ParsearDireccion(unsigned int addr, MAPA_ADDR *datos){
+    datos->addr = addr;
+    datos->palabra = getPalabra(addr);
+    datos->bloque = getBloque(addr);
+    datos->linea = getLinea(addr);
+    datos->etiqueta = getEtq(addr);
 }
