@@ -17,7 +17,9 @@ unsigned char Data[TAM_LINEA];
 
 int hexToDec(char hex[3]);  //Transforma un número de hexadecimal a decimal
 int nextDir(FILE *fd);  //Obtiene la siguiente línea de accesos_memoria.txt
-int getEtq(int num);    //Obtiene la etiqueta de una dirección en decimal
+int getEtq(int dir);    //Obtiene la etiqueta de una dirección en decimal
+int getLinea(int dir);    //Obtiene el número de línea de una dirección
+int getBlock(int dir);
 
 int main(int argc, char** argv){
     int globaltime = 0;
@@ -55,7 +57,9 @@ int main(int argc, char** argv){
 
     int dir = nextDir(fd);
     int etq = getEtq(dir);
-    printf("Etiqueda de %i: %i\n",dir, etq);
+    int lin = getLinea(dir);
+    int block = getBlock(dir);
+    printf("Bloque: %i, Etiqueta: %i, linea: %i",block,etq,lin);
     num_linea++;
 
     return 0;
@@ -65,8 +69,7 @@ int hexToDec(char hex[3]){
     int len = 2;
     int decimal, val;
 
-    for(int i = 0; i < 3; i++)
-    {
+    for(int i = 0; i < 3; i++){
         if(hex[i] >= '0' && hex[i] <= '9')
         {
             val = hex[i] - 48;
@@ -94,10 +97,24 @@ int nextDir(FILE *fd){
     return hexToDec(linea);
 }
 
-int getEtq(int num){
+int getEtq(int dir){
     int ret;
-    int mascara = ((TAM_RAM - 1) >> ETIQUETA) ^ (TAM_RAM - 1);  //111110000000 en el caso de etiqueta = 5
-    ret = num & mascara;    //Cogemos solo los 5 bits de mayor peso
-    ret = ret >> ETIQUETA;  //Los volvemos a desplazar para obtener la etiqueta
+    int mascara = ((TAM_RAM - 1) >> ETIQUETA) ^ (TAM_RAM - 1);    //111110000000 en el caso de etiqueta = 5
+    ret = dir & mascara;    //Cogemos solo los 5 bits de mayor peso
+    ret = (ret >> PALABRA) >> LINEA;  //Los volvemos a desplazar para obtener la etiqueta
+    return ret;
+}
+
+int getLinea(int dir){
+    int ret;
+    int mascara = ((TAM_RAM - 1) >> ETIQUETA) & ((TAM_RAM - 1) << PALABRA);     //000001110000 en el caso de la linea = 3
+    ret = dir & mascara;    //Cogemos solo los 3 bits de mayor peso
+    ret = ret >> PALABRA;   //Lo desplazamos para obtener la linea
+    return ret;
+} 
+
+int getBlock(int dir){
+    int ret;
+    ret = (getEtq(dir) << LINEA) + getLinea(dir);
     return ret;
 }
