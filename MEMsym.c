@@ -28,7 +28,6 @@ void VolcarCACHE(T_CACHE_LINE *tbl);
 void ParsearDireccion(unsigned int addr, MAPA_ADDR *datos);
 void TratarFallo(T_CACHE_LINE *tbl, char *MRAM, int ETQ, int linea, int bloque);
 
-int hexToDec(char hex[3]);                    //Transforma un número de hexadecimal a decimal
 unsigned int nextAddr(FILE *fd);              //Obtiene la siguiente línea de accesos_memoria.txt
 unsigned int getEtq(unsigned int addr);       //Obtiene la etiqueta de una dirección en decimal
 unsigned int getLinea(unsigned int addr);     //Obtiene el número de línea de una dirección
@@ -76,36 +75,12 @@ int main(int argc, char** argv){
     return 0;
 }
 
-int hexToDec(char hex[3]){   //Conversor de Hexadecimal a Decimal 
-    int len = 2;
-    int decimal, val;
-
-    for(int i = 0; i < 3; i++){
-        if(hex[i] >= '0' && hex[i] <= '9')
-        {
-            val = hex[i] - 48;
-        }
-        else if(hex[i] >= 'a' && hex[i] <= 'f')
-        {
-            val = hex[i] - 87;
-        }
-        else if(hex[i] >= 'A' && hex[i] <= 'F')
-        {
-            val = hex[i] - 55;
-        }
-
-        decimal += val * pow(16, len);
-        len--;
-    }
-    return decimal;
-}
-
 unsigned int nextAddr(FILE *fd){  //Devuelve la siguiente dirección a leer
     char linea[5];
     if(fgets(linea, sizeof(linea), fd) == NULL){
         return 0;
     }
-    return hexToDec(linea);
+    return strtol(linea, NULL, 16);
 }
 
 unsigned int getEtq(unsigned int addr){
