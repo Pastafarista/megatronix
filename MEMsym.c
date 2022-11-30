@@ -41,14 +41,14 @@ int main(int argc, char** argv){
     unsigned char Simul_RAM[TAM_RAM];
     unsigned int accesos_memoria[TAM_LINEA];
     FILE *fd;
-    T_CACHE_LINE linea_cache;       
+    T_CACHE_LINE tbl[NUM_FILAS];    
+    MAPA_ADDR datos[NUM_FILAS];   
 
-    linea_cache.ETQ = 0xFF;         
-    for(int i = 0; i < TAM_LINEA; i++){
-        linea_cache.Data[i] = 0x23;   
-    }
 
-    fd = fopen("CONTENTS_RAM.bin", "r");  //Abrimos y volcamos el contenido en la RAM
+    LimpiarCACHE(tbl);
+
+    //Abrimos el archivo de CONTENS_RAM.bin
+    fd = fopen("CONTENTS_RAM.bin", "r");  
     if(fd == NULL){
         printf("[Error al cargar la RAM]\n");
         return -1;
@@ -70,11 +70,8 @@ int main(int argc, char** argv){
         return -1;
     }
 
-    
-    MAPA_ADDR datos;
-
-    ParsearDireccion(nextAddr(fd), &datos);
-    printf("Etiqueta:%i\nPalabra:%i\nLinea:%i\nBloque:%i", datos.etiqueta, datos.palabra, datos.linea, datos.bloque);
+    ParsearDireccion(nextAddr(fd), &datos[0]);
+    printf("Etiqueta:%i\nPalabra:%i\nLinea:%i\nBloque:%i", datos->etiqueta, datos->palabra, datos->linea, datos->bloque);
 
     return 0;
 }
@@ -138,6 +135,15 @@ unsigned int getPalabra(unsigned int addr){
     int mascara = (((TAM_RAM - 1) << PALABRA) ^ (TAM_RAM - 1)); //000000001111 en el caso de la palabra = 4
     ret = addr & mascara;
     return ret;
+}
+
+void LimpiarCACHE(T_CACHE_LINE tbl[NUM_FILAS]){
+    for(int i = 0; i< NUM_FILAS; i++){
+        tbl[i].ETQ = 0xFF;         
+        for(int k = 0; k < TAM_LINEA; k++){
+            tbl[k].Data[i] = 0x23;   
+        }
+    }
 }
 
 void ParsearDireccion(unsigned int addr, MAPA_ADDR *datos){
