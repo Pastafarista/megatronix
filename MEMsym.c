@@ -71,7 +71,7 @@ int main(int argc, char** argv){
         
     ParsearDireccion(nextAddr(fd), &datos[0]);
     printf("Etiqueta:%i\nPalabra:%i\nLinea:%i\nBloque:%i\n", datos[0].etiqueta, datos[0].palabra, datos[0].linea, datos[0].bloque);
-            
+    TratarFallo(tbl, Simul_RAM, datos[0].etiqueta, datos[0].linea, datos[0].bloque);        
 
 
     fclose(fd);
@@ -132,4 +132,19 @@ void ParsearDireccion(unsigned int addr, MAPA_ADDR *datos){
 }
 
 void TratarFallo(T_CACHE_LINE *tbl, char *MRAM, int ETQ, int linea, int bloque){
+    for(int i = 0; i < NUM_FILAS; i++){
+        if(tbl->ETQ == ETQ){
+        }else{
+            printf("Fallo de CACHE %i\n", i);
+            tbl[i].ETQ = ETQ;
+        }
+    }
+
+    for(int i = 0; i < NUM_FILAS; i++){
+        printf("ETQ %X | Data", tbl[i].ETQ);
+        for(int j = 0; j < TAM_LINEA; j++){
+            printf(" %i ", tbl[j].Data);
+        }
+        printf("\n");
+    }
 }
