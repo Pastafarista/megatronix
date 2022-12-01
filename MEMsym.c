@@ -24,7 +24,7 @@ typedef struct{
 }MAPA_ADDR;
 
 void LimpiarCACHE(T_CACHE_LINE tbl[NUM_FILAS]);
-void VolcarCACHE(T_CACHE_LINE *tbl);
+void VolcarCACHE(T_CACHE_LINE *tbl, MAPA_ADDR *datos);
 void ParsearDireccion(unsigned int addr, MAPA_ADDR *datos);
 void TratarFallo(T_CACHE_LINE *tbl, char *MRAM, int ETQ, int linea, int bloque);
 
@@ -42,7 +42,6 @@ int main(int argc, char** argv){
     FILE *fd;
     T_CACHE_LINE tbl[NUM_FILAS];    
     MAPA_ADDR datos[NUM_FILAS];   
-
 
     LimpiarCACHE(tbl);
 
@@ -66,13 +65,16 @@ int main(int argc, char** argv){
     fd = fopen("accesos_memoria.txt", "r"); 
     if(fd == NULL){
         printf("[Error al leer el acceso a memoria]\n");
-        return -1;
+        return (-1);
     }
 
+        
     ParsearDireccion(nextAddr(fd), &datos[0]);
-    printf("Etiqueta:%i\nPalabra:%i\nLinea:%i\nBloque:%i", datos->etiqueta, datos->palabra, datos->linea, datos->bloque);
+    printf("Etiqueta:%i\nPalabra:%i\nLinea:%i\nBloque:%i\n", datos[0].etiqueta, datos[0].palabra, datos[0].linea, datos[0].bloque);
+            
 
-    return 0;
+
+    fclose(fd);
 }
 
 unsigned int nextAddr(FILE *fd){  //Devuelve la siguiente dirección a leer
@@ -113,7 +115,7 @@ unsigned int getPalabra(unsigned int addr){
 }
 
 void LimpiarCACHE(T_CACHE_LINE tbl[NUM_FILAS]){
-    for(int i = 0; i< NUM_FILAS; i++){
+    for(int i = 0; i < NUM_FILAS; i++){
         tbl[i].ETQ = 0xFF;         
         for(int k = 0; k < TAM_LINEA; k++){
             tbl[k].Data[i] = 0x23;   
@@ -127,4 +129,7 @@ void ParsearDireccion(unsigned int addr, MAPA_ADDR *datos){
     datos->bloque = getBloque(addr);
     datos->linea = getLinea(addr);
     datos->etiqueta = getEtq(addr);
+}
+
+void TratarFallo(T_CACHE_LINE *tbl, char *MRAM, int ETQ, int linea, int bloque){
 }
