@@ -4,6 +4,7 @@
 #include <math.h>
 #include <unistd.h>
 
+#define TEXTO_TAM 100
 #define TAM_LINEA 16
 #define TAM_RAM 4096
 #define NUM_FILAS 8
@@ -11,7 +12,7 @@
 #define LINEA 3
 #define PALABRA 4
 typedef struct {
-    unsigned char ETQ;
+    unsigned char etiqueta;
     unsigned char Data[TAM_LINEA];
 } T_CACHE_LINE;
 
@@ -23,20 +24,14 @@ typedef struct{
     unsigned int etiqueta;
 }MAPA_ADDR;
 
-T_CACHE_LINE tbl[NUM_FILAS];    
-MAPA_ADDR datos[NUM_FILAS]; 
-
-int globaltime = 0;
-int numfallos = 0;
-
-void LimpiarCACHE();
-void VolcarCACHE(T_CACHE_LINE *tbl, MAPA_ADDR *datos);
-void ParsearDireccion(unsigned int addr);
-void TratarFallo(char *MRAM, int ETQ, int linea, int bloque);
-void imprimirCache(char *MRAM, int addr, int ETQ, int linea, int bloque, int palabra);
+void LimpiarCACHE(T_CACHE_LINE tbl[NUM_FILAS]);
+void VolcarCACHE(T_CACHE_LINE *tbl);
+void ParsearDireccion(unsigned int addr, MAPA_ADDR *datos);
+void TratarFallo(T_CACHE_LINE *tbl, char *MRAM, MAPA_ADDR datos, int *numfallos, int *globaltime, char *texto);
+void imprimirCache(char *MRAM, MAPA_ADDR datos, T_CACHE_LINE *tbl, int *numfallos, int *globaltime, char *texto);
 
 unsigned int nextAddr(FILE *fd);              //Obtiene la siguiente línea de accesos_memoria.txt
-unsigned int getEtq(unsigned int addr);       //Obtiene la etiqueta de una dirección en decimal
+unsigned int getetiqueta(unsigned int addr);  //Obtiene la etiqueta de una dirección en decimal
 unsigned int getLinea(unsigned int addr);     //Obtiene el número de línea de una dirección
 unsigned int getBloque(unsigned int addr);    //Obtiene el bloque de una dirección
 unsigned int getPalabra(unsigned int addr);   //Obtiene la palabra de una dirección
@@ -45,8 +40,14 @@ int main(int argc, char** argv){
    
     unsigned char Simul_RAM[TAM_RAM];
     unsigned int accesos_memoria[TAM_LINEA];
+    char texto[TEXTO_TAM];
     FILE *fd;
       
+    T_CACHE_LINE tbl[NUM_FILAS];    
+    MAPA_ADDR datos[NUM_FILAS]; 
+
+    int globaltime = 0;
+    int numfallos = 0;
 
     LimpiarCACHE(tbl);
 
@@ -73,15 +74,22 @@ int main(int argc, char** argv){
         return (-1);
     }
 
+    int accesos = 0;
+
     for(int i = 0; i < TAM_LINEA; i++){
-        ParsearDireccion(nextAddr(fd));
+        ParsearDireccion(nextAddr(fd), &datos[i]);
         if( datos[i].addr != 0){
-            globaltime++;
-            imprimirCache(Simul_RAM, datos[0].addr, datos[0].etiqueta ,datos[0].linea, datos[0].bloque, datos[0].palabra);
+            accesos++;
+            imprimirCache(Simul_RAM, datos[i], tbl , &numfallos, &globaltime, texto);
             sleep(1);
         }
     }   
+    printf("Accesos totales: %i; fallos: %i; Tiempo: %f\nTexto leído: %s", accesos, numfallos, (float)globaltime/(float)accesos, texto);
+    for(int i = 0; i < TEXTO_TAM; i++){
+        printf("%c", texto[i]);
+    }
     fclose(fd);
+    VolcarCACHE(tbl);
 }
 
 unsigned int nextAddr(FILE *fd){  //Devuelve la siguiente dirección a leer
@@ -92,7 +100,7 @@ unsigned int nextAddr(FILE *fd){  //Devuelve la siguiente dirección a leer
     return strtol(linea, NULL, 16);
 }
 
-unsigned int getEtq(unsigned int addr){
+unsigned int getetiqueta(unsigned int addr){
     int ret;
     int mascara = ((TAM_RAM - 1) >> ETIQUETA) ^ (TAM_RAM - 1);  //111110000000 en el caso de etiqueta = 5
     ret = addr & mascara;                                       //Cogemos solo los 5 bits de mayor peso
@@ -110,7 +118,7 @@ unsigned int getLinea(unsigned int addr){
 
 unsigned int getBloque(unsigned int addr){
     int ret;
-    ret = (getEtq(addr) << LINEA) + getLinea(addr); //Bloque = Etiqueta + Linea
+    ret = (getetiqueta(addr) << LINEA) + getLinea(addr); //Bloque = Etiqueta + Linea
     return ret;
 }
 
@@ -121,46 +129,59 @@ unsigned int getPalabra(unsigned int addr){
     return ret;
 }
 
-void LimpiarCACHE(){
+void LimpiarCACHE(T_CACHE_LINE tbl[NUM_FILAS]){
     for(int i = 0; i < NUM_FILAS; i++){
-        tbl[i].ETQ = 0xFF;         
+        tbl[i].etiqueta = 0xFF;         
         for(int k = 0; k < TAM_LINEA; k++){
             tbl[i].Data[k] = 0x23;   
         }
     }
 }
 
-void ParsearDireccion(unsigned int addr){
+void ParsearDireccion(unsigned int addr, MAPA_ADDR *datos){
     datos->addr = addr;
     datos->palabra = getPalabra(addr);
     datos->bloque = getBloque(addr);
     datos->linea = getLinea(addr);
-    datos->etiqueta = getEtq(addr);
+    datos->etiqueta = getetiqueta(addr);
 }
 
-void imprimirCache(char *MRAM, int addr, int ETQ, int linea, int bloque, int palabra){
-    if(addr != tbl[linea].ETQ){
-        numfallos++;
-        printf("T: %d, Fallo de CACHÉ , ADDR: %04X, Etiqueta: %X, Linea: %02X, Palabra: %02X, Bloque:%02X\n", globaltime, addr, ETQ, linea, palabra, bloque);
-        printf("Cargando el Bloque: %02X en Linea: %02X\n", bloque, linea);
-        TratarFallo(MRAM, ETQ, linea, bloque);
+void imprimirCache(char *MRAM, MAPA_ADDR datos, T_CACHE_LINE *tbl, int *numfallos, int *globaltime, char *texto){
+    *globaltime += 1;
+    if(datos.etiqueta != tbl[datos.linea].etiqueta){
+        *numfallos = *numfallos + 1;
+        printf("T: %i, Fallo de CACHÉ %d, ADDR: %04X, Etiqueta: %X, Linea: %02X, Palabra: %02X, Bloque:%02X\n", *globaltime, *numfallos, datos.addr, datos.etiqueta, datos.linea, datos.palabra, datos.bloque);
+        printf("Cargando el Bloque: %02X en Linea: %02X\n", datos.bloque, datos.linea);
+        TratarFallo(tbl, MRAM, datos, numfallos, globaltime, texto);
     }
-
-    for(int i = 0; i < NUM_FILAS; i++){
-        printf("ETQ %X | Data", tbl[i].ETQ);
-        for(int j = 0; j < TAM_LINEA; j++){
-            printf(" %X ", tbl[i].Data[j]);
-        }
+    else{
+        printf("T: %d, Acierto de CACHE, ADDR %04X Label %X linea %02X palabra %02X DATO %02X", *globaltime,datos.addr, datos.etiqueta, datos.linea, datos.palabra, datos.bloque);
         printf("\n");
+        for(int i = 0; i < NUM_FILAS; i++){
+            printf("etiqueta %X | Data", tbl[i].etiqueta);
+            for(int j = 0; j < TAM_LINEA; j++){
+                printf(" %X ", tbl[i].Data[j]);
+                texto[TAM_LINEA * i + j] = tbl[i].Data[j];
+            }
+            printf("\n");
+        }
     }
-    
 }
 
-void TratarFallo(char *MRAM, int ETQ, int linea, int bloque){
-    tbl[linea].ETQ = ETQ;
-    globaltime += 10;
-     
+void TratarFallo(T_CACHE_LINE *tbl, char *MRAM, MAPA_ADDR datos, int *numfallos, int *globaltime, char *texto){
+    tbl[datos.linea].etiqueta = datos.etiqueta;
+    *globaltime = *globaltime + 9; //9 + 1 al 
     for(int i = 0; i < TAM_LINEA; i++){
-        tbl[linea].Data[i] = MRAM[(bloque+i)];
+        tbl[datos.linea].Data[i] = MRAM[(datos.bloque + i)];
     }
+    imprimirCache(MRAM, datos, tbl, numfallos, globaltime, texto);
+}
+
+void VolcarCACHE(T_CACHE_LINE *tbl){
+    FILE *fd;
+    fd = fopen ("CONTENTS_CACHE.bin", "w");
+    for(int i = 0; i < NUM_FILAS; i++){
+        fwrite(tbl[i].Data, sizeof(tbl[i].Data), TAM_LINEA, fd);
+    }
+    fclose(fd);
 }
