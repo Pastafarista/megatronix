@@ -118,7 +118,7 @@ void LimpiarCACHE(T_CACHE_LINE tbl[NUM_FILAS]){
     for(int i = 0; i < NUM_FILAS; i++){
         tbl[i].ETQ = 0xFF;         
         for(int k = 0; k < TAM_LINEA; k++){
-            tbl[k].Data[i] = 0x23;   
+            tbl[i].Data[k] = 0x23;   
         }
     }
 }
@@ -135,7 +135,7 @@ void TratarFallo(T_CACHE_LINE *tbl, char *MRAM, int ETQ, int linea, int bloque){
     for(int i = 0; i < NUM_FILAS; i++){
         if(tbl->ETQ == ETQ){
         }else{
-            printf("Fallo de CACHE %i\n", i);
+            printf("Fallo de CACHÉ %i\n", i+1);
             tbl[i].ETQ = ETQ;
         }
     }
@@ -143,7 +143,7 @@ void TratarFallo(T_CACHE_LINE *tbl, char *MRAM, int ETQ, int linea, int bloque){
     for(int i = 0; i < NUM_FILAS; i++){
         printf("ETQ %X | Data", tbl[i].ETQ);
         for(int j = 0; j < TAM_LINEA; j++){
-            printf(" %i ", tbl[j].Data);
+            printf(" %X ", tbl[i].Data[j]);
         }
         printf("\n");
     }
