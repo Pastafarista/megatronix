@@ -141,7 +141,7 @@ void ParsearDireccion(unsigned int addr){
 void imprimirCache(char *MRAM, int addr, int ETQ, int linea, int bloque, int palabra){
     if(addr != tbl[linea].ETQ){
         numfallos++;
-        printf("T: %d, Fallo de CACHÉ %d, ADDR: %04X, Etiqueta: %X, Linea: %02X, Palabra: %02X, Bloque:%02X\n", globaltime, numfallos, addr, ETQ, linea, palabra, bloque);
+        printf("T: %d, Fallo de CACHÉ , ADDR: %04X, Etiqueta: %X, Linea: %02X, Palabra: %02X, Bloque:%02X\n", globaltime, addr, ETQ, linea, palabra, bloque);
         printf("Cargando el Bloque: %02X en Linea: %02X\n", bloque, linea);
         TratarFallo(MRAM, ETQ, linea, bloque);
     }
