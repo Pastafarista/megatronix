@@ -23,10 +23,17 @@ typedef struct{
     unsigned int etiqueta;
 }MAPA_ADDR;
 
-void LimpiarCACHE(T_CACHE_LINE tbl[NUM_FILAS]);
+T_CACHE_LINE tbl[NUM_FILAS];    
+MAPA_ADDR datos[NUM_FILAS]; 
+
+int globaltime = 0;
+int numfallos = 0;
+
+void LimpiarCACHE();
 void VolcarCACHE(T_CACHE_LINE *tbl, MAPA_ADDR *datos);
-void ParsearDireccion(unsigned int addr, MAPA_ADDR *datos);
-void TratarFallo(T_CACHE_LINE *tbl, char *MRAM, int ETQ, int linea, int bloque);
+void ParsearDireccion(unsigned int addr);
+void TratarFallo(char *MRAM, int ETQ, int linea, int bloque);
+void imprimirCache(char *MRAM, int addr, int ETQ, int linea, int bloque, int palabra);
 
 unsigned int nextAddr(FILE *fd);              //Obtiene la siguiente línea de accesos_memoria.txt
 unsigned int getEtq(unsigned int addr);       //Obtiene la etiqueta de una dirección en decimal
@@ -35,13 +42,11 @@ unsigned int getBloque(unsigned int addr);    //Obtiene el bloque de una direcci
 unsigned int getPalabra(unsigned int addr);   //Obtiene la palabra de una dirección
 
 int main(int argc, char** argv){
-    int globaltime = 0;
-    int numfallos = 0;
+   
     unsigned char Simul_RAM[TAM_RAM];
     unsigned int accesos_memoria[TAM_LINEA];
     FILE *fd;
-    T_CACHE_LINE tbl[NUM_FILAS];    
-    MAPA_ADDR datos[NUM_FILAS];   
+      
 
     LimpiarCACHE(tbl);
 
@@ -68,12 +73,14 @@ int main(int argc, char** argv){
         return (-1);
     }
 
-        
-    ParsearDireccion(nextAddr(fd), &datos[0]);
-    printf("Etiqueta:%i\nPalabra:%i\nLinea:%i\nBloque:%i\n", datos[0].etiqueta, datos[0].palabra, datos[0].linea, datos[0].bloque);
-    TratarFallo(tbl, Simul_RAM, datos[0].etiqueta, datos[0].linea, datos[0].bloque);        
-
-
+    for(int i = 0; i < TAM_LINEA; i++){
+        ParsearDireccion(nextAddr(fd));
+        if( datos[i].addr != 0){
+            globaltime++;
+            imprimirCache(Simul_RAM, datos[0].addr, datos[0].etiqueta ,datos[0].linea, datos[0].bloque, datos[0].palabra);
+            sleep(1);
+        }
+    }   
     fclose(fd);
 }
 
@@ -114,7 +121,7 @@ unsigned int getPalabra(unsigned int addr){
     return ret;
 }
 
-void LimpiarCACHE(T_CACHE_LINE tbl[NUM_FILAS]){
+void LimpiarCACHE(){
     for(int i = 0; i < NUM_FILAS; i++){
         tbl[i].ETQ = 0xFF;         
         for(int k = 0; k < TAM_LINEA; k++){
@@ -123,7 +130,7 @@ void LimpiarCACHE(T_CACHE_LINE tbl[NUM_FILAS]){
     }
 }
 
-void ParsearDireccion(unsigned int addr, MAPA_ADDR *datos){
+void ParsearDireccion(unsigned int addr){
     datos->addr = addr;
     datos->palabra = getPalabra(addr);
     datos->bloque = getBloque(addr);
@@ -131,13 +138,12 @@ void ParsearDireccion(unsigned int addr, MAPA_ADDR *datos){
     datos->etiqueta = getEtq(addr);
 }
 
-void TratarFallo(T_CACHE_LINE *tbl, char *MRAM, int ETQ, int linea, int bloque){
-    for(int i = 0; i < NUM_FILAS; i++){
-        if(tbl->ETQ == ETQ){
-        }else{
-            printf("Fallo de CACHÉ %i\n", i+1);
-            tbl[i].ETQ = ETQ;
-        }
+void imprimirCache(char *MRAM, int addr, int ETQ, int linea, int bloque, int palabra){
+    if(addr != tbl[linea].ETQ){
+        numfallos++;
+        printf("T: %d, Fallo de CACHÉ %d, ADDR: %04X, Etiqueta: %X, Linea: %02X, Palabra: %02X, Bloque:%02X\n", globaltime, numfallos, addr, ETQ, linea, palabra, bloque);
+        printf("Cargando el Bloque: %02X en Linea: %02X\n", bloque, linea);
+        TratarFallo(MRAM, ETQ, linea, bloque);
     }
 
     for(int i = 0; i < NUM_FILAS; i++){
@@ -146,5 +152,15 @@ void TratarFallo(T_CACHE_LINE *tbl, char *MRAM, int ETQ, int linea, int bloque){
             printf(" %X ", tbl[i].Data[j]);
         }
         printf("\n");
+    }
+    
+}
+
+void TratarFallo(char *MRAM, int ETQ, int linea, int bloque){
+    tbl[linea].ETQ = ETQ;
+    globaltime += 10;
+     
+    for(int i = 0; i < TAM_LINEA; i++){
+        tbl[linea].Data[i] = MRAM[(bloque+i)];
     }
 }
